@@ -7,7 +7,7 @@ async function backTo(ctx, word) {
                     ctx.deleteMessage();
                     ctx.reply(ctx.i18n.t("hey"), { reply_markup: main(ctx) })
                 })
-                
+
         case "withClean":
             ctx.editMessageText(ctx.i18n.t("hey"), { reply_markup: main(ctx) })
             ctx.session.order = {}
@@ -17,6 +17,7 @@ async function backTo(ctx, word) {
             await ctx.deleteMessage();
             await ctx.deleteMessage();
             ctx.reply(ctx.i18n.t("hey"), { reply_markup: main(ctx) })
+            
         default:
             break;
     }
