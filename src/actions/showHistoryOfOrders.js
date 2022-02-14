@@ -19,14 +19,11 @@ module.exports = {
     showHistoryOfOrders
 }
 const orderPage = (ctx, list, page = 0) => {
-  console.log(list);
     page = parseInt(page)
     const limit = 3
     let message = '';
     let btns = []
     
-   
-  
     if (page < 0) {
       page = Math.ceil(list.length / limit) - 1
     }
@@ -34,7 +31,6 @@ const orderPage = (ctx, list, page = 0) => {
   
     for (let i = 0; i < limit; i++) {
       const order = list[page * limit + i]
-      console.log(page * limit + i);
       if (order === undefined) {
         break
       }
