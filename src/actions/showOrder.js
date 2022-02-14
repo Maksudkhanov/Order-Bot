@@ -1,6 +1,6 @@
 const { InputFile } = require('grammy');
 const productPrice = require('../static/productPrice');
-const { dish } = require('../ui/ui');
+const { dish } = require('../keyboards/ui');
 
 function showOrder(ctx) {
       if(ctx.session.order.amount === undefined || ctx.session.order.amount ===0) {

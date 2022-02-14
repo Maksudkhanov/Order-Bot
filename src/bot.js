@@ -14,7 +14,7 @@ const {
   location,
   main,
   backWithClean,
-} = require("./ui/ui");
+} = require("./keyboards/ui");
 const { greetUser } = require("./actions/greetUser");
 const { getWord } = require("./utils/getWord");
 const { showOrder } = require("./actions/showOrder");

@@ -1,5 +1,5 @@
 const User = require('../models/User');
-const { location } = require('../ui/ui');
+const { location } = require('../keyboards/ui');
 
 const OnPhoneNumber = async (ctx) => {
   switch (ctx.session.flag) {
