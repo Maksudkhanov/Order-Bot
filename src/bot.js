@@ -28,6 +28,8 @@ const saveOrder = require("./actions/saveOrder");
 const Order = require("./models/Order");
 const moment = require('moment');
 const updateUser = require('./db/queries/updateUser');
+const { backTo } = require('./actions/backTo');
+const { start } = require("./keyboards/inlineKeyboards")
 
 const i18n = new I18n({
   defaultLanguage: "uz",
@@ -123,24 +125,7 @@ bot.callbackQuery(/backto./, async (ctx) => {
   ctx.answerCallbackQuery();
 
   const word = getWord(ctx);
-  if (word === "main") {
-    ctx.editMessageText(ctx.i18n.t("hey"), { reply_markup: main(ctx) })
-      .catch(() => {
-        ctx.deleteMessage();
-        ctx.reply(ctx.i18n.t("hey"), { reply_markup: main(ctx) })
-      })
-  }
-
-  if (word === 'withClean') {
-    ctx.editMessageText(ctx.i18n.t("hey"), { reply_markup: main(ctx) })
-    ctx.session.order = {}
-  }
-
-  if (word === 'withPayment') {
-    ctx.deleteMessage();
-    ctx.deleteMessage();
-    ctx.reply(ctx.i18n.t("hey"), { reply_markup: main(ctx) })
-  }
+  return backTo(ctx, word)
 });
 
 bot.callbackQuery(/menu./, async (ctx) => {
