@@ -1,3 +1,4 @@
+const { main } = require('../keyboards/inlineKeyboards');
 
 async function backTo(ctx, word) {
     switch (word) {
@@ -17,7 +18,7 @@ async function backTo(ctx, word) {
             await ctx.deleteMessage();
             await ctx.deleteMessage();
             ctx.reply(ctx.i18n.t("hey"), { reply_markup: main(ctx) })
-            
+
         default:
             break;
     }

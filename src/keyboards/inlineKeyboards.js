@@ -73,7 +73,6 @@ module.exports = {
     settings,
     paymentType,
     userPhoneNumber,
-    list,
     backWithClean,
     backFromNumber
 };

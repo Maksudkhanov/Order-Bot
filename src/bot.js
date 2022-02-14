@@ -4,17 +4,6 @@ const {
 } = require("grammy");
 const { I18n } = require("@grammyjs/i18n");
 const token = require("./token");
-const {
-  start,
-  dish,
-  back,
-  number,
-  paymentType,
-  userPhoneNumber,
-  location,
-  main,
-  backWithClean,
-} = require("./keyboards/ui");
 const { greetUser } = require("./actions/greetUser");
 const { getWord } = require("./utils/getWord");
 const { showOrder } = require("./actions/showOrder");
@@ -24,12 +13,20 @@ const { showSettings } = require("./actions/showSettings");
 const { OnPhoneNumber } = require("./handlers/OnPhoneNumber");
 const { OnLocation } = require("./handlers/OnLocation");
 const User = require("./models/User");
-const saveOrder = require("./actions/saveOrder");
-const Order = require("./models/Order");
-const moment = require('moment');
-const updateUser = require('./db/queries/updateUser');
+const saveOrder = require("./db/queries/saveOrder");
 const { backTo } = require('./actions/backTo');
-const { start } = require("./keyboards/inlineKeyboards")
+const { start } = require("./keyboards/inlineKeyboards");
+const { getUserOrders } = require('./db/queries/getUserOrders');
+const { showHistoryOfOrders } = require('./actions/showHistoryOfOrders');
+const { confirmPhoneNumber } = require('./actions/confirmPhoneNumber');
+const { askForNumber } = require('./actions/askForNumber');
+const { location } = require('./keyboards/customKeyboard');
+const { askForLocation } = require('./actions/askForLocation');
+const { chooseTypeOfPayment } = require('./actions/chooseTypeOfPayment');
+const { concludeOrder } = require('./actions/concludeOrder');
+const { OnMessageText } = require('./handlers/OnMessageText');
+require("./db/connection");
+
 
 const i18n = new I18n({
   defaultLanguage: "uz",
@@ -71,21 +68,6 @@ bot.use(async (ctx, next) => {
   await next();
 });
 
-require("./db/connection");
-
-// bot.command("pay", async (ctx) => {
-//   // console.log('+++++++++++++++++++++++++');
-//   // console.log(back(ctx).inline_keyboard[0][0]);
-//   return await ctx.replyWithInvoice(
-//     'Payment', ctx.i18n.t("pay"), 'payload', 
-//     '371317599:TEST:1644420941421',
-//      'UZS', [
-//       { label: '10', amount: `100000` }
-//      ]
-//   // , {reply_markup: back(ctx)}
-//   )
-// })
-
 
 bot.command("start", async (ctx) => {
   ctx.session.flag = "";
@@ -97,6 +79,23 @@ bot.command("start", async (ctx) => {
   return greetUser(ctx);
 });
 
+
+bot.on(":contact", async (ctx) => {
+  return OnPhoneNumber(ctx);
+});
+
+bot.on("::phone_number", async (ctx) => {
+  return OnPhoneNumber(ctx);
+});
+
+bot.on(":location", async (ctx) => {
+  return OnLocation(ctx);
+});
+
+bot.on("message:text", (ctx) => {
+  return OnMessageText(ctx)
+});
+
 function isStart(word) {
   return !word.includes(".re.");
 }
@@ -106,7 +105,12 @@ bot.callbackQuery(/lang./, async (ctx) => {
   ctx.session.user.language = defineLanguage(ctx)
   ctx.i18n.locale(ctx.session.user.language)
 
-  await setUserLanguage(ctx.session.telegramId, ctx.session.user.language)
+  // setUserLanguage(ctx.session.user.telegramId, ctx.session.user.language)
+
+  await User.findOneAndUpdate(
+    { telegramId: ctx.session.user.telegramId },
+    { language: ctx.session.user.language }
+  );
 
   if (isStart(ctx.match.input)) {
     await ctx.deleteMessage();
@@ -116,7 +120,7 @@ bot.callbackQuery(/lang./, async (ctx) => {
   return showSettings(ctx);
 });
 
-bot.callbackQuery(/order/,async (ctx) => {
+bot.callbackQuery(/order/, async (ctx) => {
   await ctx.deleteMessage();
   return showOrder(ctx);
 });
@@ -128,38 +132,19 @@ bot.callbackQuery(/backto./, async (ctx) => {
   return backTo(ctx, word)
 });
 
-bot.callbackQuery(/menu./, async (ctx) => {
-  ctx.answerCallbackQuery();
-
-  ctx.editMessageText(
-    ctx.i18n.t("yourOrder") + "\n" + ctx.i18n.t("amount") + ": " +
-    ctx.session.order.amount +
-    "\n" + ctx.i18n.t("sum") + ': ' + ctx.session.order.sum + ' ' + ctx.i18n.t("currency"),
-    {
-      reply_markup: dish(ctx),
-    }
-  );
-});
 
 bot.callbackQuery(/historyOfOrders/, async (ctx) => {
   ctx.answerCallbackQuery();
+
   const page = getWord(ctx);
+  const orders = await getUserOrders(ctx.session.user.telegramId)
 
-  const orders = await Order.find({
-    user_id: ctx.session.user.telegramId,
-  }).lean();
+  return showHistoryOfOrders(ctx, orders, page)
+});
 
-  if (orders.length === 0) {
-    return ctx.editMessageText(ctx.i18n.t("noOrders"), { reply_markup: back(ctx) })
-  }
-
-  let { message, keyboard } = orderPage(ctx, orders, page)
-  if (orders.length > 0 && orders.length < 3) {
-    keyboard = back(ctx)
-  }
-
-  ctx.editMessageText(message, { reply_markup: keyboard })
-
+bot.callbackQuery(/settings/, async (ctx) => {
+  ctx.answerCallbackQuery();
+  return showSettings(ctx);
 });
 
 bot.callbackQuery(/count./, async (ctx) => {
@@ -169,12 +154,6 @@ bot.callbackQuery(/count./, async (ctx) => {
   proccessOrder(ctx, word);
 });
 
-bot.callbackQuery(/settings/, (ctx) => {
-  ctx.answerCallbackQuery();
-
-  showSettings(ctx);
-});
-
 bot.callbackQuery(/buy/, async (ctx) => {
   if (!ctx.session.order || ctx.session.order.amount === 0) {
     return ctx.answerCallbackQuery({
@@ -182,19 +161,16 @@ bot.callbackQuery(/buy/, async (ctx) => {
       text: ctx.i18n.t("chooseAmount"),
     });
   }
+  
   ctx.answerCallbackQuery();
 
   if (ctx.session.user?.phoneNumber) {
-    ctx.deleteMessage()
-
-    return ctx.reply(
-      ctx.i18n.t("isYourPhoneNumber") + " : " + ctx.session.user.phoneNumber,
-      { reply_markup: userPhoneNumber(ctx) }
-    );
+    await ctx.deleteMessage()
+    return confirmPhoneNumber(ctx)
   }
 
   ctx.session.flag = "phone";
-  return ctx.reply(ctx.i18n.t("askForNumber"), { reply_markup: number(ctx) });
+  return askForNumber(ctx)
 });
 
 bot.callbackQuery(/phoneNumber/, async (ctx) => {
@@ -204,54 +180,18 @@ bot.callbackQuery(/phoneNumber/, async (ctx) => {
 
   switch (answer) {
     case "yes":
-      ctx.deleteMessage();
+      await ctx.deleteMessage();
       ctx.session.flag = "location"
       ctx.session.order.phoneNumber = ctx.session.user.phoneNumber
-      return ctx.reply(ctx.i18n.t("askForLocation"), {
-        reply_markup: location(ctx),
-      });
+      return askForLocation(ctx)
 
     case "no":
       ctx.session.flag = "phone";
       ctx.deleteMessage();
-      return ctx.reply(ctx.i18n.t("askForNumber"), {
-        reply_markup: number(ctx),
-      });
+      return askForNumber(ctx)
 
     default:
-      break;
-  }
-});
-
-bot.on(":contact", async (ctx) => {
-  return await OnPhoneNumber(ctx);
-});
-
-bot.on("::phone_number", async (ctx) => {
-  return await OnPhoneNumber(ctx);
-});
-
-bot.on(":location", async (ctx) => {
-  return OnLocation(ctx);
-});
-
-bot.on("message:text", (ctx) => {
-  switch (ctx.session.flag) {
-    case "name":
-      ctx.session.order.username = ctx.message.text;
-
-
-      return ctx.reply(
-        ctx.i18n.t("yourOrder") + "\n" + ctx.i18n.t("amount") + ": " +
-        ctx.session.order.amount +
-        "\n" + ctx.i18n.t("sum") + ': ' + ctx.session.order.sum + ' ' + ctx.i18n.t("currency") +
-
-        "\n\n" + ctx.i18n.t("chooseTypeOfPayment"),
-        { reply_markup: paymentType(ctx) }
-      );
-
-    default:
-      break;
+      return;
   }
 });
 
@@ -261,29 +201,7 @@ bot.callbackQuery(/payment/, async (ctx) => {
   ctx.session.order.typeOfPayment = typeOfPayment;
   ctx.session.order.user_id = ctx.session.user.telegramId;
 
-
-  if (ctx.session.order.typeOfPayment === 'cash') {
-    ctx.session.order.status = 'NP'
-    await saveOrder(ctx);
-    return ctx.editMessageText(ctx.i18n.t("yourOrder") + "\n" + ctx.i18n.t("amount") + ": " +
-      ctx.session.order.amount +
-      "\n" + ctx.i18n.t("sum") + ': ' + ctx.session.order.sum + ' ' + ctx.i18n.t("currency") +
-
-      "\n\n" + ctx.i18n.t("typeOfPayment") + ": " + ctx.i18n.t(`${ctx.session.order.typeOfPayment}`) +
-      '\n' + ctx.i18n.t("status") + ": " + ctx.i18n.t(`${ctx.session.order.status}`),
-      { reply_markup: backWithClean(ctx) })
-  }
-
-  ctx.deleteMessage()
-  await ctx.replyWithInvoice(
-    'Payment', ctx.i18n.t("pay"), 'payload',
-    '371317599:TEST:1644420941421',
-    'UZS', [
-    { label: '10', amount: `${ctx.session?.order?.sum}00` }
-  ]
-
-  )
-  ctx.session.order = {}
+  return concludeOrder(ctx, ctx.session.order.typeOfPayment)
 });
 
 bot.on(":successful_payment", async (ctx) => {
@@ -297,48 +215,3 @@ bot.catch((err, ctx) => {
 
 bot.start({ drop_pending_updates: true });
 
-
-const orderPage = (ctx, list, page = 0) => {
-  page = parseInt(page)
-  const limit = 3
-  let message = '';
-  let btns = []
- 
-
-  if (page < 0) {
-    page = Math.ceil(list.length / limit) - 1
-  }
-
-
-  for (let i = 0; i < limit; i++) {
-    const order = list[page * limit + i]
-    if (order === undefined) {
-      break
-    }
-    message += ctx.i18n.t("amount") + ": " + order.amount + "    " +
-      ctx.i18n.t("sum") + ': ' + order.sum + ' ' + ctx.i18n.t("currency") + '\n' +
-      ctx.i18n.t("status") + ": " + ctx.i18n.t(`${order.status}`) + '\n' +
-      ctx.i18n.t("typeOfPayment") + ': ' + ctx.i18n.t(`${order.typeOfPayment}`) + '\n' +
-      ctx.i18n.t("time") + ': ' + moment(order.createdAt).format("DD.MM.YYYY HH:MM") + '\n\n'
-
-  }
-
-  const next = (page + 1) % (Math.ceil(list.length / limit))
-  const prew = (page - 1) % (Math.ceil(list.length / limit))
-
-  btns.push([
-    { text: ctx.i18n.t("back"), callback_data: `historyOfOrders.${prew}` },
-    { text: ctx.i18n.t("next"), callback_data: `historyOfOrders.${next}` }
-  ])
-
-  btns.push([
-    { text: ctx.i18n.t("back"), callback_data: `backto.main` }
-  ])
-
-  const keyboard = { inline_keyboard: btns }
-
-  return {
-    message: message,
-    keyboard: keyboard
-  }
-}

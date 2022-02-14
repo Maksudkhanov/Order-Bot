@@ -1,5 +1,4 @@
 const OnLocation = (ctx) => {
-    console.log(ctx.session.flag);
   switch (ctx.session.flag) {
     case "location":
       ctx.session.order.location = ctx.message.location;
@@ -9,7 +8,7 @@ const OnLocation = (ctx) => {
       });
 
     default:
-      break;
+      return;
   }
 };
 
