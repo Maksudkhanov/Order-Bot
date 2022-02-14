@@ -1,0 +1,47 @@
+{
+  "hey": "Salom! Komandani tanlang",
+
+  "order": "Buyurtma qilish",
+
+  "basket": "🛒Savat",
+
+
+  "chooseDish": "Taomni tanlang",
+
+  "back": "⬅️Orqaga",
+  "next": "➡️Keyingi",
+  "cleanBasket": "Savatni bo'shatish",
+
+  "chooseByGiven": "Taqdim etilganlardan biror narsani tanlang",
+  "settings": "⚙️Sozlamalar",
+  "changeLanguage": "Tilni o'zgartirish",
+  "sendContact": "Kontaktni yuborish",
+  "askForNumber": "Telefon raqamingizni yuboring",
+  "askForLocation": "Joylashuvni yuboring",
+  "sendLocation": "Joylashuvni yuborish",
+  "askForName": "Ismingizni yozing",
+  "buy": "Sotib olish",
+  "cash": "💵Naqd pul",
+  "card": "💳Click, Payme",
+  "chooseAmount": "Miqdorni tanlang",
+  "yes":"Ha",
+"no": "Yo'q",
+"isYourPhoneNumber": "Bu sizning raqamingizmi?",
+"historyOfOrders": "Sotib olish tarixi",
+
+"sum": "Narx",
+"amount": "Son",
+"orderTime": "Buyurtma vaqti",
+"typeOfPayment": "To'lov turi",
+"currency": "so'm",
+"time": "Vaqt",
+"noOrders": "Sizda buyurtmalar yo'q",
+"yourOrder": "Sizning buyurtma",
+"chooseTypeOfPayment": "To'lov turini tanlang",
+"cancel": "Bekor qilish",
+"pay": "To'lash",
+
+"NP": "To'lanmagan",
+"PG": "To'langan - Yetkazib berilgan",
+"status": "Status"
+}
